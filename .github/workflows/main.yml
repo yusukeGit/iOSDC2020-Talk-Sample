@@ -1,0 +1,73 @@
+# This is a basic workflow to help you get started with Actions
+
+name: CI
+
+# Controls when the action will run. Triggers the workflow on push or pull request
+# events but only for the main branch
+on:
+  push:
+    branches: 
+      - main
+      - develop
+    paths-ignore:
+      - Docs/**
+      - README.md
+  pull_request:
+    branches:
+      - develop
+    paths-ignore:
+      - Docs/**
+      - README.md
+
+env: 
+  DEVELOPER_DIR: /Applications/Xcode_11.4.app/Contents/Developper
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  test:
+  # This workflow contains a single job called "build"
+  # build:
+    # The type of runner that the job will run on
+    runs-on: macOS-latest
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - uses: actions/checkout@v2
+        
+      - name: Cache Gems
+      - uses: actions/cache@v2
+        with:
+        path: vendor/bundle
+        key: ${{ runner.os }}-gems-${{ hashFiles('**/Gemfile.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-gems-
+          
+      - name: Instal Bundled Gems
+        run: make install-bundler
+        
+      - name: Install Mint
+        run: brew install mint
+        
+      - name: Cache Mint packages
+        uses: actions/cache@v2
+        with:
+        path: mint
+        key: ${{ runner.os }}-mint-${{ hashFiles('**/Mintfile') }}
+        restore-keys: |
+          ${{ runner.os }}-mint-
+        
+      # CocoaPodsで管理しているライブラリのキャッシュ
+      - name: Cache Pods
+        uses: actions/cache@v2
+        with:
+          path: Pods
+          key: ${{ runner.os }}-pods-${{ hashFiles('**/Podfile.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-pods-
+      # プロジェクトファイルの生成、CocoaPodsで管理しているライブラリのインストール
+      - name: Generate Xcode project and install Pods
+        run: make generate-xcodeproj
+        
+      - name: Xcode test
+         run: make test
